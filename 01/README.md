@@ -10,7 +10,7 @@
 - イベントループは次のタスクを取得する
 - 以後繰り返し
 
-# sample1.py
+# sample01.py
 
 asyncioのハローワールド
 
@@ -20,21 +20,21 @@ asyncioのハローワールド
 
 [引用](https://docs.python.jp/3/library/asyncio-eventloop.html#hello-world-with-call-soon)
 
-# sample2.py
+# sample02.py
 
 sample2を若干改変。
 
 イベントループは1スレッドでユニークなものになっているはずなので、`asyncio.get_event_loop()`すればどこからでも取得できる。はず。
 
-# sample3.py
+# sample03.py
 
 `call_soon`と`call_later`の使い方
 
-# sample4.py
+# sample04.py
 
 色々なイベントハンドラーが存在する。
 
-# sample5.py
+# sample05.py
 
 タスクとコルーチン
 
@@ -48,7 +48,7 @@ sample2を若干改変。
 
 [参照](https://docs.python.jp/3/library/asyncio-task.html#example-hello-world-coroutine)
 
-# sample6.py
+# sample06.py
 
 あまりアリガタミを感じないコルーチンの例
 
