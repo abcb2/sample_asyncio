@@ -12,9 +12,24 @@
 
 # sample1.py
 
+asyncioのハローワールド
+
+イベントループに処理をhookさせるので、従来の書き方とは頭を切り替える必要がある。
+
+とは言ってもハローワールドだけでは意味がわからないかも。
+
+[引用](https://docs.python.jp/3/library/asyncio-eventloop.html#hello-world-with-call-soon)
+
+# sample2.py
+
+sample2を若干改変。
+
+イベントループは1スレッドでユニークなものになっているはずなので、`asyncio.get_event_loop()`すればどこからでも取得できる。はず。
+
+# sample100.py
+
 asyncio.sleepを使わないと非同期処理にはならない。合計で7秒近くかかる(time.sleepを使った場合)
 asyncio.sleepを使うと合計4秒近くで完了。
-
 
 
 # 参考
