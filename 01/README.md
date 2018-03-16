@@ -46,7 +46,17 @@ sample2を若干改変。
 
 `loop.ensure_future()`や`loop.create_task()`などを使う。
 
+[参照](https://docs.python.jp/3/library/asyncio-task.html#example-hello-world-coroutine)
 
+# sample6.py
+
+あまりアリガタミを感じないコルーチンの例
+
+[参照](https://docs.python.jp/3/library/asyncio-task.html#example-coroutine-displaying-the-current-date)
+
+# sample07.py
+
+コルーチンのチェーン
 
 # sample100.py
 
