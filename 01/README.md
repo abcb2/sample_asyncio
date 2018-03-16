@@ -26,6 +26,14 @@ sample2を若干改変。
 
 イベントループは1スレッドでユニークなものになっているはずなので、`asyncio.get_event_loop()`すればどこからでも取得できる。はず。
 
+# sample3.py
+
+`call_soon`と`call_later`の使い方
+
+# sample4.py
+
+色々なイベントハンドラーが存在する。
+
 # sample100.py
 
 asyncio.sleepを使わないと非同期処理にはならない。合計で7秒近くかかる(time.sleepを使った場合)
@@ -37,3 +45,4 @@ asyncio.sleepを使うと合計4秒近くで完了。
 - http://iuk.hateblo.jp/entry/2017/01/27/173449
 - https://qiita.com/icoxfog417/items/07cbf5110ca82629aca0
 - https://djangostars.com/blog/asynchronous-programming-in-python-asyncio/
+
