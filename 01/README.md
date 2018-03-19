@@ -74,6 +74,14 @@ sample2を若干改変。
 
 [参照](https://docs.python.jp/3/library/asyncio-task.html#example-future-with-run-until-complete)
 
+# sample10.py
+
+socketpairを使う
+
+# sample11.py
+
+リズムの悪いsocketpairを使ったping-pong
+
 # sample100.py
 
 asyncio.sleepを使わないと非同期処理にはならない。合計で7秒近くかかる(time.sleepを使った場合)
