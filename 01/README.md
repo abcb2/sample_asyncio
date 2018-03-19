@@ -82,6 +82,23 @@ socketpairを使う
 
 リズムの悪いsocketpairを使ったping-pong
 
+# sample12.py
+
+コルーチン使って`asyncio.sleep`を使う
+
+# sample13.py
+
+リズムのいいPing-pongを書きたいが、ようわからず。
+
+公式のサンプルを写経
+
+https://docs.python.jp/3/library/asyncio-stream.html#register-an-open-socket-to-wait-for-data-using-streams
+
+# sample14.py
+
+デコレータ使わず書きたいがようわからん
+
+
 # sample100.py
 
 asyncio.sleepを使わないと非同期処理にはならない。合計で7秒近くかかる(time.sleepを使った場合)
