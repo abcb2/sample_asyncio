@@ -1,23 +1,44 @@
 import asyncio
-from pprint import pprint
+jfrom pprint import pprint
 
 
-async def myfuture():
-    future = loop.create_future()
-    # do something
-    result = "yes"
-    loop.call_later(2, future.set_result, result)
-    return (await future)
+class RemoteTail():
+    def __init__(self):
+        self.rotate_flag = False
 
 
-async def myfuture2():
+r = RemoteTail()
+
+
+async def tailer(future):
+    await asyncio.sleep(1)
+    print(1)
+    print("rotate_flag: ", r.rotate_flag)
+
     await asyncio.sleep(2)
+    print(2)
+    print("rotate_flag: ", r.rotate_flag)
+
+    await asyncio.sleep(3)
+    print(3)
+    return await future
+
+
+async def rotate_watcher(future):
+    # loop.call_later(0.5, watcher, future)
+    await asyncio.sleep(1.5)
+    print("detect!!")
+    detect_rotate(future)
+
+
+def detect_rotate(future):
+    r.rotate_flag = True
+    future.set_result("rotated!!")
 
 
 loop = asyncio.get_event_loop()
-f = myfuture2()
-print(f)
-l = loop.run_until_complete(asyncio.wait([f]))
-print(l)
-print(f)
+future = loop.create_future()
+tasks = [tailer(future), rotate_watcher(future)]
+loop.run_until_complete(asyncio.wait(tasks))
+print(future.result())
 loop.close()
