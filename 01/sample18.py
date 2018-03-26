@@ -71,5 +71,5 @@ futures.add(moge())
 futures.add(watcher())
 print(futures)
 
-loop.run_until_complete(asyncio.gather(moge(), watcher()))
+loop.run_until_complete(asyncio.gather(moge(), watcher(), loop.create_future()))
 loop.close()
