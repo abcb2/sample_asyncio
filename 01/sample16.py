@@ -1,5 +1,5 @@
 import asyncio
-jfrom pprint import pprint
+from pprint import pprint
 
 
 class RemoteTail():
