@@ -35,6 +35,24 @@ cmd += [arg]
 print(cmd)
 
 
+class MyPAsshProtocol(passh.PAsshProtocol):
+    def flush_line(self, buf: bytearray, out):
+        out = open("./hoge.txt", "a")
+        self._prefix = ""
+        pos = buf.rfind(b'\n')
+        if pos == -1:
+            return
+        b = bytearray()
+        for line in buf[0:pos + 1].splitlines(True):
+            b.extend(self._prefix)
+            b.extend(line)
+            # out.write(b)
+            out.write(b.decode('utf-8'))
+            b.clear()
+        out.flush()
+        del buf[0:pos + 1]
+
+
 class RemoteTail(object):
     def __init__(self):
         self.loop = asyncio.get_event_loop()
@@ -57,21 +75,18 @@ class RemoteTail(object):
         self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
 
     async def tail(self):
-        use_stdout = True
+        use_stdout = False
         proc = self.loop.subprocess_exec(
             functools.partial(
-                passh.PAsshProtocol, _host, self.exit_future, use_stdout,
+                MyPAsshProtocol, _host, self.exit_future, use_stdout,
             ), *cmd, stdin=None)
         transport, protocol = await proc
         logging.warning("---------------->")
         logging.warning(transport)
         logging.warning(protocol)
-        self.sub_proc = protocol
         logging.warning("----------------<")
         await self.exit_future
-        logging.warning("=======================>")
         transport.close()
-        logging.warning("=======================<")
 
     async def tail_bak(self):
         print("Start tail")
