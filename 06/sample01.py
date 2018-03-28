@@ -13,6 +13,11 @@ key_secret = os.getenv('PASSH_KEY')
 user = os.getenv('PASSH_USER')
 _host = os.getenv("PASSH_HOST")
 log_path = os.getenv("PASSH_LOG_PATH")
+out_path = "./moge2.txt"
+
+targets = [
+    {"host": _host, "port": port, "user": user, "key_secret": key_secret, "log_path": log_path, "out_path": out_path},
+]
 
 logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
     port, key_secret, user, _host, log_path
@@ -55,7 +60,7 @@ class RemoteTail(object):
     def __init__(self):
         cmd = self._create_cmd()
         outputfile = "moge.txt"
-        logging.warning(cmd, outputfile)
+        logging.warning("{}, {}".format(cmd, outputfile))
 
         self.loop = asyncio.get_event_loop()
         self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
