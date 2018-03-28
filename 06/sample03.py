@@ -129,14 +129,11 @@ class RemoteTail(object):
             m = re.search(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).+$", protocol.result[0])
             if m:
                 stat_date = m.group(1)
-                print(stat_date)
                 stat_date_dt = dt.strptime(stat_date, "%Y-%m-%d %H:%M:%S")
-                print(type(stat_date_dt))
                 now_dt = dt.now()
                 delta = now_dt - stat_date_dt
-                print(delta.total_seconds())
                 if delta.total_seconds() > rotation_trigger_interval:
-                    logging.warning("Rotate!!!")
+                    logging.warning("Rotate!!! delta is {}".format(delta.total_seconds()))
                     tail_task.cancel()
                     tail_task = asyncio.Task(self.tail(cmd_tail, out_path), loop=self.loop)
                 else:
