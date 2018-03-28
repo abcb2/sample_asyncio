@@ -14,25 +14,9 @@ user = os.getenv('PASSH_USER')
 _host = os.getenv("PASSH_HOST")
 log_path = os.getenv("PASSH_LOG_PATH")
 
-passh._SSH = ('ssh', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
-passh._INSECURE_OPTS = (
-    '-o', 'StrictHostKeyChecking=no',
-    '-o', 'UserKnownHostsFile=/dev/null',
-    '-o', 'IdentitiesOnly=yes'
-)
-
 logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
     port, key_secret, user, _host, log_path
 ))
-
-arg = 'sudo tail -f ' + log_path
-host = user + "@" + _host
-
-cmd = list(passh._SSH)
-cmd.extend(passh._INSECURE_OPTS)
-cmd.append(host)
-cmd += [arg]
-print(cmd)
 
 
 class MyPAsshProtocol(passh.PAsshProtocol):
@@ -54,9 +38,26 @@ class MyPAsshProtocol(passh.PAsshProtocol):
 
 
 class RemoteTail(object):
+    passh._SSH = ('ssh', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
+    passh._INSECURE_OPTS = (
+        '-o', 'StrictHostKeyChecking=no',
+        '-o', 'UserKnownHostsFile=/dev/null',
+        '-o', 'IdentitiesOnly=yes'
+    )
+
     def __init__(self):
+        arg = 'sudo tail -f ' + log_path
+        # arg = 'tail -f /home/kwata/hoge.txt'
+        host = user + "@" + _host
+
+        cmd = list(passh._SSH)
+        cmd.extend(passh._INSECURE_OPTS)
+        cmd.append(host)
+        cmd += [arg]
+        print(cmd)
+
         self.loop = asyncio.get_event_loop()
-        self.task_tail = asyncio.Task(self.tail(), loop=self.loop)
+        self.task_tail = asyncio.Task(self.tail(cmd), loop=self.loop)
         # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
         self.exit_future = self.loop.create_future()
 
@@ -74,17 +75,13 @@ class RemoteTail(object):
 
         self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
 
-    async def tail(self):
+    async def tail(self, cmd):
         use_stdout = False
         proc = self.loop.subprocess_exec(
             functools.partial(
                 MyPAsshProtocol, _host, self.exit_future, use_stdout,
             ), *cmd, stdin=None)
         transport, protocol = await proc
-        logging.warning("---------------->")
-        logging.warning(transport)
-        logging.warning(protocol)
-        logging.warning("----------------<")
         await self.exit_future
         transport.close()
 
