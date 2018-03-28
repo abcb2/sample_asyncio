@@ -58,14 +58,24 @@ class RemoteTail(object):
     )
 
     def __init__(self):
+        self.loop = asyncio.get_event_loop()
+        self.task_list = []
+
         cmd = self._create_cmd()
         outputfile = "moge.txt"
-        logging.warning("{}, {}".format(cmd, outputfile))
+        asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
 
-        self.loop = asyncio.get_event_loop()
-        self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
-        self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
-        self.exit_future = self.loop.create_future()
+        # for _ in targets:
+        #     cmd = self._create_cmd()
+        #     outputfile = "moge.txt"
+        #     logging.warning("{}, {}".format(cmd, outputfile))
+        #     self.task_list.append({
+        #         "task_tail": asyncio.Task(self.tail(cmd, outputfile), loop=self.loop),
+        #         "task_watch": asyncio.Task(self.watch(), loop=self.loop),
+        #     })
+        #     # self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
+        #     # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
+        #     # self.exit_future = self.loop.create_future()
 
     def _create_cmd(self):
         arg = 'tail -f ' + log_path
@@ -83,28 +93,26 @@ class RemoteTail(object):
     async def watch(self):
         logging.info("Start watch")
         await asyncio.sleep(2.5)
-        detect_flag = True
+        asyncio.Task(self.watch(), loop=self.loop)
 
-        if detect_flag and self.task_tail.cancel():
-            self.task_tail = asyncio.Task(self.tail(), loop=self.loop)
+        # detect_flag = True
 
-        self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
+        # if detect_flag and self.task_tail.cancel():
+        #     self.task_tail = asyncio.Task(self.tail(), loop=self.loop)
+        #
+        # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
 
     async def tail(self, cmd, outputfile):
         use_stdout = False
+        exit_future = self.loop.create_future()
         proc = self.loop.subprocess_exec(
             functools.partial(
-                MyPAsshProtocol, _host, self.exit_future, use_stdout, outputfile
+                MyPAsshProtocol, _host, exit_future, use_stdout, outputfile
             ), *cmd, stdin=None)
         transport, protocol = await proc
-        await self.exit_future
+        await self.watch()
+        await exit_future
         transport.close()
-
-    async def tail_bak(self):
-        print("Start tail")
-        for n in range(1, 5):
-            await asyncio.sleep(n)
-            print("slept {}".format(n))
 
 
 try:
