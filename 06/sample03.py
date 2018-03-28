@@ -3,7 +3,7 @@ import logging
 import passh
 import os
 import functools
-import signal
+import re
 from pprint import pprint
 
 logging.basicConfig(level=logging.DEBUG)
@@ -61,7 +61,8 @@ class RotateWatchProtocol(passh.PAsshProtocol):
             return
 
         for line in buf[0:pos + 1].splitlines(True):
-            self.result.append(line.decode('utf-8'))
+            if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.", line.decode('utf-8')):
+                self.result.append(line.decode('utf-8'))
         out.flush()
         del buf[0:pos + 1]
 
