@@ -24,7 +24,7 @@ logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
 ))
 
 
-class MyPAsshProtocol(passh.PAsshProtocol):
+class TailProtocol(passh.PAsshProtocol):
     def __init__(self, hostname: str,
                  exit_future: asyncio.Future, use_stdout: bool, outputfile: str):
         super().__init__(hostname, exit_future, use_stdout)
@@ -49,6 +49,23 @@ class MyPAsshProtocol(passh.PAsshProtocol):
         out.close()
 
 
+class RotateWatchProtocol(passh.PAsshProtocol):
+    def __init__(self, hostname: str,
+                 exit_future: asyncio.Future, use_stdout: bool):
+        super().__init__(hostname, exit_future, use_stdout)
+        self.result = []
+
+    def flush_line(self, buf: bytearray, out):
+        pos = buf.rfind(b'\n')
+        if pos == -1:
+            return
+
+        for line in buf[0:pos + 1].splitlines(True):
+            self.result.append(line.decode('utf-8'))
+        out.flush()
+        del buf[0:pos + 1]
+
+
 class RemoteTail(object):
     passh._SSH = ('ssh', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
     passh._INSECURE_OPTS = (
@@ -62,8 +79,10 @@ class RemoteTail(object):
         self.task_list = []
 
         cmd = self._create_cmd()
-        outputfile = "moge.txt"
-        asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
+        cmd_watch = self._create_cmd_watch()
+        for _ in targets:
+            asyncio.Task(self.tail(cmd, _["out_path"]), loop=self.loop)
+            asyncio.Task(self.watch(cmd_watch), loop=self.loop)
 
         # for _ in targets:
         #     cmd = self._create_cmd()
@@ -76,6 +95,15 @@ class RemoteTail(object):
         #     # self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
         #     # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
         #     # self.exit_future = self.loop.create_future()
+
+    def _create_cmd_watch(self):
+        arg = 'stat -c %y ' + log_path
+        host = user + "@" + _host
+        cmd = list(passh._SSH)
+        cmd.extend(passh._INSECURE_OPTS)
+        cmd.append(host)
+        cmd += [arg]
+        return cmd
 
     def _create_cmd(self):
         arg = 'tail -f ' + log_path
@@ -90,10 +118,22 @@ class RemoteTail(object):
         self.loop.run_forever()
         self.loop.close()
 
-    async def watch(self):
-        logging.info("Start watch")
-        await asyncio.sleep(2.5)
-        asyncio.Task(self.watch(), loop=self.loop)
+    async def watch(self, cmd):
+        await asyncio.sleep(1.5)
+        print("WATCH")
+        use_stdout = False
+        exit_future = self.loop.create_future()
+        proc = self.loop.subprocess_exec(
+            functools.partial(
+                RotateWatchProtocol, _host, exit_future, use_stdout
+            ), *cmd, stdin=None)
+        transport, protocol = await proc
+        await exit_future
+        transport.close()
+        pprint(vars(protocol))
+        # logging.info("Start watch")
+        # await asyncio.sleep(2.5)
+        # asyncio.Task(self.watch(), loop=self.loop)
 
         # detect_flag = True
 
@@ -107,10 +147,9 @@ class RemoteTail(object):
         exit_future = self.loop.create_future()
         proc = self.loop.subprocess_exec(
             functools.partial(
-                MyPAsshProtocol, _host, exit_future, use_stdout, outputfile
+                TailProtocol, _host, exit_future, use_stdout, outputfile
             ), *cmd, stdin=None)
         transport, protocol = await proc
-        await self.watch()
         await exit_future
         transport.close()
 
