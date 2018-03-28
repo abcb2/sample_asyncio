@@ -64,11 +64,11 @@ class RemoteTail(object):
 
         self.loop = asyncio.get_event_loop()
         self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
-        # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
+        self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
         self.exit_future = self.loop.create_future()
 
     def _create_cmd(self):
-        arg = 'sudo tail -f ' + log_path
+        arg = 'tail -f ' + log_path
         host = user + "@" + _host
         cmd = list(passh._SSH)
         cmd.extend(passh._INSECURE_OPTS)
@@ -80,10 +80,10 @@ class RemoteTail(object):
         self.loop.run_forever()
         self.loop.close()
 
-    async def watch(self):
-        logging.info("Start watch")
-        await asyncio.sleep(2.5)
-        detect_flag = True
+        # async def watch(self):
+        #     logging.info("Start watch")
+        #     await asyncio.sleep(2.5)
+        #     detect_flag = True
 
         if detect_flag and self.task_tail.cancel():
             self.task_tail = asyncio.Task(self.tail(), loop=self.loop)
