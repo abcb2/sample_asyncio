@@ -20,8 +20,14 @@ logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
 
 
 class MyPAsshProtocol(passh.PAsshProtocol):
+    def __init__(self, hostname: str,
+                 exit_future: asyncio.Future, use_stdout: bool, outputfile: str):
+        super().__init__(hostname, exit_future, use_stdout)
+        self.outputfile = outputfile
+
     def flush_line(self, buf: bytearray, out):
-        out = open("./hoge.txt", "a")
+        # out = open("./hoge.txt", "a")
+        out = open(self.outputfile, "a")
         self._prefix = ""
         pos = buf.rfind(b'\n')
         if pos == -1:
@@ -35,6 +41,7 @@ class MyPAsshProtocol(passh.PAsshProtocol):
             b.clear()
         out.flush()
         del buf[0:pos + 1]
+        out.close()
 
 
 class RemoteTail(object):
@@ -46,20 +53,23 @@ class RemoteTail(object):
     )
 
     def __init__(self):
-        arg = 'sudo tail -f ' + log_path
-        # arg = 'tail -f /home/kwata/hoge.txt'
-        host = user + "@" + _host
+        cmd = self._create_cmd()
+        outputfile = "moge.txt"
+        logging.warning(cmd, outputfile)
 
+        self.loop = asyncio.get_event_loop()
+        self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
+        # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
+        self.exit_future = self.loop.create_future()
+
+    def _create_cmd(self):
+        arg = 'sudo tail -f ' + log_path
+        host = user + "@" + _host
         cmd = list(passh._SSH)
         cmd.extend(passh._INSECURE_OPTS)
         cmd.append(host)
         cmd += [arg]
-        print(cmd)
-
-        self.loop = asyncio.get_event_loop()
-        self.task_tail = asyncio.Task(self.tail(cmd), loop=self.loop)
-        # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
-        self.exit_future = self.loop.create_future()
+        return cmd
 
     def run(self):
         self.loop.run_forever()
@@ -75,11 +85,11 @@ class RemoteTail(object):
 
         self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
 
-    async def tail(self, cmd):
+    async def tail(self, cmd, outputfile):
         use_stdout = False
         proc = self.loop.subprocess_exec(
             functools.partial(
-                MyPAsshProtocol, _host, self.exit_future, use_stdout,
+                MyPAsshProtocol, _host, self.exit_future, use_stdout, outputfile
             ), *cmd, stdin=None)
         transport, protocol = await proc
         await self.exit_future
