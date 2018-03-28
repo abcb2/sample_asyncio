@@ -1,24 +1,11 @@
 import asyncio
 import logging
 import passh
-import os
 import functools
 import re
 from datetime import datetime as dt
-from pprint import pprint
 
 logging.basicConfig(level=logging.DEBUG)
-
-port = os.getenv('PASSH_PORT')
-key_secret = os.getenv('PASSH_KEY')
-user = os.getenv('PASSH_USER')
-_host = os.getenv("PASSH_HOST")
-log_path = os.getenv("PASSH_LOG_PATH")
-out_path = "./moge2.txt"
-
-logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
-    port, key_secret, user, _host, log_path
-))
 
 
 class TailProtocol(passh.PAsshProtocol):
@@ -65,42 +52,38 @@ class RotateWatchProtocol(passh.PAsshProtocol):
 
 
 class RemoteTail(object):
-    passh._SSH = ('ssh', '-t', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
-    passh._INSECURE_OPTS = (
-        '-o', 'StrictHostKeyChecking=no',
-        '-o', 'UserKnownHostsFile=/dev/null',
-        '-o', 'IdentitiesOnly=yes'
-    )
-
     def __init__(self):
         self.loop = asyncio.get_event_loop()
         self.task_list = []
 
+        # need to configure targets
         targets = [
-            {"host": _host, "port": port, "user": user, "key_secret": key_secret, "log_path": log_path,
-             "out_path": out_path},
+            {"host": "HOST", "port": "PORT", "user": "USER",
+             "key_secret": "SECRET",
+             "log_path": "/path/to/log",
+             "out_path": "/path/to/log"},
         ]
 
-
         for t in targets:
-            cmd_tail = self._create_cmd()
-            tail_task = asyncio.Task(self.tail(cmd_tail, t["out_path"]), loop=self.loop)
+            logging.warning(t)
+            passh._SSH = (
+                'ssh', '-t', '-t', '-p', t['port'], '-i',
+                t['key_secret'], '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6'
+            )
+            passh._INSECURE_OPTS = (
+                '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
+                '-o', 'IdentitiesOnly=yes'
+            )
 
-            cmd_watch = self._create_cmd_watch()
-            asyncio.Task(self.watch(cmd_watch, tail_task, cmd_tail, t["out_path"]), loop=self.loop)
+            cmd_tail = self._create_cmd(t, 'tail -f ')
+            tail_task = asyncio.Task(self.tail(cmd_tail, t["host"], t["out_path"]), loop=self.loop)
 
-    def _create_cmd_watch(self):
-        arg = 'stat -c %y ' + log_path
-        host = user + "@" + _host
-        cmd = list(passh._SSH)
-        cmd.extend(passh._INSECURE_OPTS)
-        cmd.append(host)
-        cmd += [arg]
-        return cmd
+            cmd_watch = self._create_cmd(t, 'stat -c %y ')
+            asyncio.Task(self.watch(cmd_watch, tail_task, cmd_tail, t["host"], t["out_path"]), loop=self.loop)
 
-    def _create_cmd(self):
-        arg = 'tail -f ' + log_path
-        host = user + "@" + _host
+    def _create_cmd(self, t, cmd_str):
+        arg = cmd_str + t['log_path']
+        host = t['user'] + "@" + t['host']
         cmd = list(passh._SSH)
         cmd.extend(passh._INSECURE_OPTS)
         cmd.append(host)
@@ -111,14 +94,14 @@ class RemoteTail(object):
         self.loop.run_forever()
         self.loop.close()
 
-    async def watch(self, cmd, tail_task, cmd_tail, out_path, watch_interval=3.0, rotation_trigger_interval=900):
+    async def watch(self, cmd, tail_task, cmd_tail, host, out_path, watch_interval=3.0, rotation_trigger_interval=900):
         await asyncio.sleep(watch_interval)
         logging.warning("WATCH")
         use_stdout = False
         exit_future = self.loop.create_future()
         proc = self.loop.subprocess_exec(
             functools.partial(
-                RotateWatchProtocol, _host, exit_future, use_stdout
+                RotateWatchProtocol, host, exit_future, use_stdout
             ), *cmd, stdin=None)
         transport, protocol = await proc
         await exit_future
@@ -143,14 +126,14 @@ class RemoteTail(object):
         else:
             logging.warning("ResultNumError: {}".format(protocol.result))
 
-        task = asyncio.Task(self.watch(cmd, tail_task, cmd_tail, out_path), loop=self.loop)
+        task = asyncio.Task(self.watch(cmd, tail_task, cmd_tail, host, out_path), loop=self.loop)
 
-    async def tail(self, cmd, outputfile):
+    async def tail(self, cmd, host, outputfile):
         use_stdout = False
         exit_future = self.loop.create_future()
         proc = self.loop.subprocess_exec(
             functools.partial(
-                TailProtocol, _host, exit_future, use_stdout, outputfile
+                TailProtocol, host, exit_future, use_stdout, outputfile
             ), *cmd, stdin=None)
         transport, protocol = await proc
         await exit_future
