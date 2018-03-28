@@ -4,6 +4,7 @@ import passh
 import os
 import functools
 import re
+from datetime import datetime as dt
 from pprint import pprint
 
 logging.basicConfig(level=logging.DEBUG)
@@ -14,10 +15,6 @@ user = os.getenv('PASSH_USER')
 _host = os.getenv("PASSH_HOST")
 log_path = os.getenv("PASSH_LOG_PATH")
 out_path = "./moge2.txt"
-
-targets = [
-    {"host": _host, "port": port, "user": user, "key_secret": key_secret, "log_path": log_path, "out_path": out_path},
-]
 
 logging.warning("PORT:{}\nKEY:{}\nUSER:{}\nHOST:{}\nLOG:{}\n".format(
     port, key_secret, user, _host, log_path
@@ -68,7 +65,7 @@ class RotateWatchProtocol(passh.PAsshProtocol):
 
 
 class RemoteTail(object):
-    passh._SSH = ('ssh', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
+    passh._SSH = ('ssh', '-t', '-t', '-p', port, '-i', key_secret, '-o', 'LogLevel=ERROR', '-o', 'ConnectTimeout=6')
     passh._INSECURE_OPTS = (
         '-o', 'StrictHostKeyChecking=no',
         '-o', 'UserKnownHostsFile=/dev/null',
@@ -79,23 +76,18 @@ class RemoteTail(object):
         self.loop = asyncio.get_event_loop()
         self.task_list = []
 
-        cmd = self._create_cmd()
-        cmd_watch = self._create_cmd_watch()
-        for _ in targets:
-            asyncio.Task(self.tail(cmd, _["out_path"]), loop=self.loop)
-            asyncio.Task(self.watch(cmd_watch), loop=self.loop)
+        targets = [
+            {"host": _host, "port": port, "user": user, "key_secret": key_secret, "log_path": log_path,
+             "out_path": out_path},
+        ]
 
-        # for _ in targets:
-        #     cmd = self._create_cmd()
-        #     outputfile = "moge.txt"
-        #     logging.warning("{}, {}".format(cmd, outputfile))
-        #     self.task_list.append({
-        #         "task_tail": asyncio.Task(self.tail(cmd, outputfile), loop=self.loop),
-        #         "task_watch": asyncio.Task(self.watch(), loop=self.loop),
-        #     })
-        #     # self.task_tail = asyncio.Task(self.tail(cmd, outputfile), loop=self.loop)
-        #     # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
-        #     # self.exit_future = self.loop.create_future()
+
+        for t in targets:
+            cmd_tail = self._create_cmd()
+            tail_task = asyncio.Task(self.tail(cmd_tail, t["out_path"]), loop=self.loop)
+
+            cmd_watch = self._create_cmd_watch()
+            asyncio.Task(self.watch(cmd_watch, tail_task, cmd_tail, t["out_path"]), loop=self.loop)
 
     def _create_cmd_watch(self):
         arg = 'stat -c %y ' + log_path
@@ -119,9 +111,9 @@ class RemoteTail(object):
         self.loop.run_forever()
         self.loop.close()
 
-    async def watch(self, cmd):
-        await asyncio.sleep(1.5)
-        print("WATCH")
+    async def watch(self, cmd, tail_task, cmd_tail, out_path, watch_interval=3.0, rotation_trigger_interval=900):
+        await asyncio.sleep(watch_interval)
+        logging.warning("WATCH")
         use_stdout = False
         exit_future = self.loop.create_future()
         proc = self.loop.subprocess_exec(
@@ -131,17 +123,30 @@ class RemoteTail(object):
         transport, protocol = await proc
         await exit_future
         transport.close()
-        pprint(vars(protocol))
-        # logging.info("Start watch")
-        # await asyncio.sleep(2.5)
-        # asyncio.Task(self.watch(), loop=self.loop)
+        logging.debug(protocol.result[0])
+        logging.debug(type(protocol.result[0]))
+        if len(protocol.result) == 1:
+            m = re.search(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).+$", protocol.result[0])
+            if m:
+                stat_date = m.group(1)
+                print(stat_date)
+                stat_date_dt = dt.strptime(stat_date, "%Y-%m-%d %H:%M:%S")
+                print(type(stat_date_dt))
+                now_dt = dt.now()
+                delta = now_dt - stat_date_dt
+                print(delta.total_seconds())
+                if delta.total_seconds() > rotation_trigger_interval:
+                    logging.warning("Rotate!!!")
+                    tail_task.cancel()
+                    tail_task = asyncio.Task(self.tail(cmd_tail, out_path), loop=self.loop)
+                else:
+                    logging.debug("Not Rotate: delta_total_sec is {}".format(delta.total_seconds()))
+            else:
+                logging.warning("RegexError: {}".format(protocol.result[0]))
+        else:
+            logging.warning("ResultNumError: {}".format(protocol.result))
 
-        # detect_flag = True
-
-        # if detect_flag and self.task_tail.cancel():
-        #     self.task_tail = asyncio.Task(self.tail(), loop=self.loop)
-        #
-        # self.task_watch = asyncio.Task(self.watch(), loop=self.loop)
+        task = asyncio.Task(self.watch(cmd, tail_task, cmd_tail, out_path), loop=self.loop)
 
     async def tail(self, cmd, outputfile):
         use_stdout = False
