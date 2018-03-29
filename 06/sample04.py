@@ -1,4 +1,6 @@
 import re
+import os
+import time
 from datetime import datetime as dt
 
 
@@ -22,7 +24,16 @@ def diff():
     print(diff)
     print(diff.total_seconds())
 
-diff()
+def my_stat():
+    mtime = os.stat("./sample01.py").st_mtime
+    d = dt.fromtimestamp(mtime)
+    print(dt.strftime(d, "%Y-%m-%d %H:%M:%S"))
+    # ret = time.mktime(time.localtime(mtime))
+    # print(type(ret))
+    # print(ret)
+    # print(dt.strftime(ret, "%Y-%m-%d %H:%M:%S"))
+
+my_stat()
 
 # s = "hoge"
 # b = b"1234-hoge"
