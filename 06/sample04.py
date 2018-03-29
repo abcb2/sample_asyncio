@@ -1,7 +1,10 @@
 import re
 import os
 import time
+import logging
 from datetime import datetime as dt
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def match():
@@ -10,6 +13,7 @@ def match():
     if m:
         print(m.groups())
         print(m.group(1))
+
 
 def diff():
     d = '2018-03-28 18:00:00'
@@ -24,6 +28,7 @@ def diff():
     print(diff)
     print(diff.total_seconds())
 
+
 def my_stat():
     mtime = os.stat("./sample01.py").st_mtime
     d = dt.fromtimestamp(mtime)
@@ -33,8 +38,17 @@ def my_stat():
     # print(ret)
     # print(dt.strftime(ret, "%Y-%m-%d %H:%M:%S"))
 
-my_stat()
 
+def log():
+    try:
+        ret = 1 / 0
+    except Exception as e:
+        logging.exception(e)
+
+    print("FINISH")
+
+
+log()
 # s = "hoge"
 # b = b"1234-hoge"
 #
